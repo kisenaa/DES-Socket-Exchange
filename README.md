@@ -3,6 +3,7 @@
 Johannes Daniswara Pratama
 5025221276
 
+- Socket with TLS / SSL Secure Connectionn
 - Securely Exchange DES Keys using RSA Public and Private key
 - Server and Client has it's own DES Key and RSA Keys
 - Communication are Encrypted from client to server and server to client (bi-directional encrypted)

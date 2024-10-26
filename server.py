@@ -1,5 +1,6 @@
 import socket
 import struct
+import ssl
 from DES import Des
 from RSA import RSA_Algorithm
 
@@ -17,6 +18,7 @@ class ServerProgram():
         self.host           = socket.gethostname()
         self.port           = 5022
         self.server_socket  = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_connection = None
         self.connection     = None
         self.client_address = ""
         self.local_keys     = ""
@@ -25,6 +27,7 @@ class ServerProgram():
         self.RSA            = RSA_Algorithm()
         self.local_RSA      = RSA_Container()
         self.client_RSA         = RSA_Container()
+        self.ssl_context    = None
 
     @staticmethod
     def pack_tuple(int_tuple: tuple[int, int]) -> bytes:
@@ -47,7 +50,14 @@ class ServerProgram():
         self.server_socket.bind((self.host, self.port)) 
         self.server_socket.listen(1)
 
-        self.connection, self.client_address = self.server_socket.accept()
+        # Wrap the socket with SSL
+        self.ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        self.ssl_context.check_hostname = False
+        self.ssl_context.verify_mode = ssl.CERT_NONE 
+        self.ssl_context.load_cert_chain(certfile='server.crt', keyfile='server.key')
+
+        self.client_connection, self.client_address = self.server_socket.accept()
+        self.connection = self.ssl_context.wrap_socket(self.client_connection, server_side=True)
         print("Connection from: " + str(self.client_address))
 
         # Additional Validation

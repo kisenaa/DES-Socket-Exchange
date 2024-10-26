@@ -1,5 +1,6 @@
 import socket
 import struct
+import ssl
 from DES import Des
 from RSA import RSA_Algorithm
 
@@ -15,7 +16,8 @@ class ClientProgram():
     def __init__(self) -> None:
         self.host                = socket.gethostname()
         self.port                = 5022
-        self.client_socket       = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket              = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket       = None
         self.local_keys : bytes  = '\0'
         self.server_keys: bytes  = '\0'
         self.server_ip           = ""
@@ -24,6 +26,7 @@ class ClientProgram():
         self.RSA                = RSA_Algorithm()
         self.local_RSA          = RSA_Container()
         self.server_RSA         = RSA_Container()
+        self.ssl_context        = None
 
     @staticmethod
     def pack_tuple(int_tuple: tuple[int, int]) -> bytes:
@@ -43,6 +46,11 @@ class ClientProgram():
         return list(struct.unpack(f'<{num_integers}Q', packed_message))
     
     def __StartSocket(self):
+        self.ssl_context = ssl.create_default_context()
+        self.ssl_context.check_hostname = False
+        self.ssl_context.verify_mode = ssl.CERT_NONE 
+        self.client_socket = self.ssl_context.wrap_socket(self.socket, server_hostname=self.host)
+        
         self.client_socket.connect((self.host, self.port)) 
         self.server_ip, self.server_port = self.client_socket.getpeername()
         print(f"Connected to server at IP: {self.server_ip}, Port: {self.server_port}")
