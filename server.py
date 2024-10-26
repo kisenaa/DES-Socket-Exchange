@@ -1,0 +1,86 @@
+import socket
+from DES import Des
+
+Local_keys = ""
+Remote_Keys = ""
+
+class ServerProgram():
+    def __init__(self) -> None:
+        self.host           = socket.gethostname()
+        self.port           = 5022
+        self.server_socket  = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connection     = None
+        self.remote_address = ""
+        self.local_keys     = ""
+        self.remote_keys:bytes    = ""
+        self.DES            = Des()
+
+    def __StartServerSocket(self):
+        self.server_socket.bind((self.host, self.port)) 
+        self.server_socket.listen(1)
+
+        self.connection, self.remote_address = self.server_socket.accept()
+        print("Connection from: " + str(self.remote_address))
+
+        # Additional Validation
+        confirmation = input("Do you want to accept this client connection? (yes/no): ")
+        if confirmation.lower() == 'no' :
+            print("Connection Refused ! Terminating Connection ...")
+            self.connection.close()
+            return False
+        else :
+            print("Connection Accepted !")
+            True
+    
+    def __HandleMessage(self):
+        # Handle Incoming / Outgoing Message
+        while True:
+            data = self.connection.recv(1024).decode()
+            if not data:
+                break
+
+            # Decrypt the encrypted message from client. Convert to bytes from hex
+            print("\nraw from client: " + str(data))
+            encrypted_message = bytes.fromhex(data)
+            data = self.DES.Decrypt_using_key(encrypted_message, self.remote_keys)
+
+            print("decrypted from client: " + str(data))
+            data = input(' -> ')
+
+            # Encrypt the string before sending to client
+            data = data.encode('utf-8')  
+            encrypted_message = self.DES.Encrypt(data, self.local_keys)
+
+            # send data to the client
+            self.connection.send(encrypted_message.hex().encode())
+
+        self.connection.close() 
+    
+    def Start(self):
+        if self.__StartServerSocket() == False:
+            return
+        
+        # Receive DES keys from client
+        self.remote_keys = self.connection.recv(1024).decode()
+        self.remote_keys = bytes.fromhex(self.remote_keys)
+        print(f"client keys: ", self.remote_keys)
+
+        # Our turn to send our local keys to client
+        self.local_keys = self.DES.Random_Bytes(8)
+        self.connection.send(self.local_keys.hex().encode())
+        print(f"local keys: ", self.local_keys, '\n')
+
+        self.__HandleMessage()
+
+
+if __name__ == '__main__':
+    Program = ServerProgram()
+    Program.Start()
+
+
+
+# 1. Client send keys -> Server receive keys
+# 2. Server send keys -> Client receive key
+
+# 1. Client encrypt -> Server Decrypt
+# 2. Server Encrypt -> Client Decrypt
